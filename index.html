@@ -4,7 +4,7 @@
  <meta charset="UTF-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
  <meta name="theme-color" content="#000000"/>
- <title>RayBOT Offline Assistant</title>
+ <title>RayBOT Trained Assistant</title>
  <link rel="manifest" href="manifest.json" />
  <style>
    body { margin: 0; font-family: sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; height: 100vh; }
@@ -14,24 +14,37 @@
    .user { text-align: right; color: #0f0; }
    .bot { text-align: left; color: #0af; }
    form { display: flex; border-top: 1px solid #333; }
-   input { flex: 1; padding: 1em; border: none; font-size: 1em; background: #000; color: #fff; }
+   input, button { font-size: 1em; }
+   input { flex: 1; padding: 1em; border: none; background: #000; color: #fff; }
    button { background: #333; color: #fff; padding: 1em; border: none; }
+   #trainer { background: #222; padding: 1em; display: flex; flex-direction: column; gap: .5em; }
+   #trainer input { width: 100%; padding: 0.5em; }
+   #trainer button { background: #0af; border: none; padding: 0.5em; color: #000; font-weight: bold; }
  </style>
 </head>
 <body>
- <header>🤖 RayBOT Offline Assistant</header>
+ <header>🤖 RayBOT Trained Assistant</header>
  <div id="chat"></div>
  <form id="form">
    <input id="input" autocomplete="off" placeholder="Ask me something..." />
    <button type="submit">Send</button>
  </form>
 
+ <div id="trainer">
+   <input id="trainQ" placeholder="If user says..." />
+   <input id="trainA" placeholder="RayBOT should reply..." />
+   <button onclick="train()">➕ Save Response</button>
+ </div>
+
  <script>
    const input = document.getElementById('input');
    const chat = document.getElementById('chat');
    const form = document.getElementById('form');
+   const trainQ = document.getElementById('trainQ');
+   const trainA = document.getElementById('trainA');
 
    let history = JSON.parse(localStorage.getItem('chat') || '[]');
+   let memory = JSON.parse(localStorage.getItem('memory') || '{}');
 
    function addMessage(text, sender) {
      const div = document.createElement('div');
@@ -42,17 +55,35 @@
    }
 
    function respond(msg) {
-     msg = msg.toLowerCase();
-     if (msg.includes('hello') || msg.includes('hi')) return "Hi there! How can I help you?";
-     if (msg.includes('time')) return `Current time is ${new Date().toLocaleTimeString()}.`;
-     if (msg.includes('date')) return `Today's date is ${new Date().toLocaleDateString()}.`;
-     if (msg.includes('who are you')) return "I'm RayBOT, your offline assistant.";
-     if (msg.includes('help')) return "Try asking about the date, time, or say hello!";
+     const lower = msg.toLowerCase();
+     for (let q in memory) {
+       if (lower.includes(q.toLowerCase())) return memory[q];
+     }
+
+     // Default responses
+     if (lower.includes('hello') || lower.includes('hi')) return "Hi there! How can I help you?";
+     if (lower.includes('time')) return `Current time is ${new Date().toLocaleTimeString()}.`;
+     if (lower.includes('date')) return `Today's date is ${new Date().toLocaleDateString()}.`;
+     if (lower.includes('who are you')) return "I'm RayBOT, your offline assistant.";
+     if (lower.includes('help')) return "You can teach me! Scroll down to add questions + replies.";
      return "Sorry, I don't understand that yet.";
    }
 
-   function saveHistory() {
+   function save() {
      localStorage.setItem('chat', JSON.stringify(history));
+     localStorage.setItem('memory', JSON.stringify(memory));
+   }
+
+   function train() {
+     const question = trainQ.value.trim().toLowerCase();
+     const answer = trainA.value.trim();
+     if (question && answer) {
+       memory[question] = answer;
+       trainQ.value = '';
+       trainA.value = '';
+       alert('✅ Saved! I will now respond to that.');
+       save();
+     }
    }
 
    history.forEach(([text, sender]) => addMessage(text, sender));
@@ -67,7 +98,7 @@
      const reply = respond(text);
      history.push([reply, 'bot']);
      setTimeout(() => addMessage(reply, 'bot'), 500);
-     saveHistory();
+     save();
    };
  </script>
 
